@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSession, signIn, signOut } from "next-auth/react";
 import {
   Search, Book, Database, Zap, User, Library, Shield,
-  LayoutDashboard, Settings, Activity, Clock, LogOut, RefreshCw, Server
+  LayoutDashboard, Settings, Activity, Clock, LogOut, RefreshCw, Server, Trash2
 } from 'lucide-react';
 import { Card, Button, Badge } from '../components/LibraryUI';
 import Sidebar from '../components/Sidebar';
@@ -42,9 +42,15 @@ export default function App() {
   };
 
   // Initial Load & Debounced Search
+  // Initial Load & Debounced Search
   useEffect(() => {
     if (session) {
       fetchBorrowedBooks();
+    }
+  }, [session]);
+
+  useEffect(() => {
+    if (session) {
       const delaySearch = setTimeout(() => {
         fetchBooks(query);
       }, 500);
@@ -148,6 +154,29 @@ export default function App() {
     } catch (error) {
       console.error("Return failed:", error);
       addLog('ERROR', 'Network error during return', 'danger');
+    }
+  }
+
+  async function handleDelete(bookId, bookTitle) {
+    if (!confirm(`Are you sure you want to delete "${bookTitle}"?`)) return;
+
+    try {
+      const res = await fetch('/api/books/delete', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookId }),
+      });
+
+      const result = await res.json();
+
+      if (res.ok) {
+        addLog('ADMIN', `Deleted "${bookTitle}"`, 'warning');
+        fetchBooks(query);
+      } else {
+        alert(result.message);
+      }
+    } catch (error) {
+      console.error("Delete failed:", error);
     }
   }
 
@@ -311,6 +340,16 @@ export default function App() {
                       ) : (
                         <span className="text-xs text-slate-400 italic">Unavailable</span>
                       )
+                    )}
+
+                    {session?.user?.role === 'admin' && (
+                      <button
+                        onClick={() => handleDelete(book._id, book.title)}
+                        className="ml-2 p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
+                        title="Delete Book"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     )}
                   </div>
                 </div>
