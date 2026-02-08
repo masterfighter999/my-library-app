@@ -1,0 +1,18 @@
+/my-library-app
+├── .env.local                  # Environment Variables (Secrets)
+├── lib
+│   ├── mongodb.js              # Database Connection
+│   └── redis.js                # Cache Connection
+├── models
+│   └── Book.js                 # Data Schema
+├── components
+│   └── LibraryUI.js            # Reusable UI Components
+├── pages
+│   ├── _app.js                 # Auth Provider Setup
+│   ├── index.js                # Main Dashboard
+│   └── api
+│       ├── auth
+│       │   └── [...nextauth].js # OAuth Configuration
+│       └── books
+│           ├── search.js       # Search API (Redis Cache Logic)
+│           └── borrow.js       # Borrow API (Inventory Logic)
