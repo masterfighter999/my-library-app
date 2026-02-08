@@ -14,8 +14,8 @@ const NavButton = ({ id, icon: Icon, label, activeTab, setActiveTab }) => (
     <button
         onClick={() => setActiveTab(id)}
         className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${activeTab === id
-                ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800'
+            ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20'
+            : 'text-slate-400 hover:text-white hover:bg-slate-800'
             }`}
     >
         <Icon className="w-4 h-4" />
@@ -37,9 +37,11 @@ export default function Sidebar({ user, activeTab, setActiveTab }) {
                 <NavButton id="dashboard" icon={LayoutDashboard} label="Dashboard" activeTab={activeTab} setActiveTab={setActiveTab} />
                 <NavButton id="books" icon={Book} label="Library Catalog" activeTab={activeTab} setActiveTab={setActiveTab} />
                 {user?.role === 'admin' && (
-                    <NavButton id="analytics" icon={Activity} label="System Analytics" activeTab={activeTab} setActiveTab={setActiveTab} />
+                    <>
+                        <NavButton id="loans" icon={Activity} label="Active Loans" activeTab={activeTab} setActiveTab={setActiveTab} />
+                        <NavButton id="settings" icon={Settings} label="System Settings" activeTab={activeTab} setActiveTab={setActiveTab} />
+                    </>
                 )}
-                <NavButton id="settings" icon={Settings} label="Settings" activeTab={activeTab} setActiveTab={setActiveTab} />
             </nav>
 
             <div className="p-4 border-t border-slate-800 bg-slate-900/50">

@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useSession, signIn, signOut } from "next-auth/react";
 import {
   Search, Book, Database, Zap, User, Library, Shield,
-  LayoutDashboard, Settings, Activity, Clock, LogOut, RefreshCw, Server, Trash2
+  LayoutDashboard, Settings, Activity, Clock, LogOut, RefreshCw, Server, Trash2,
+  Calendar, DollarSign
 } from 'lucide-react';
 import { Card, Button, Badge } from '../components/LibraryUI';
 import Sidebar from '../components/Sidebar';
@@ -75,9 +76,158 @@ const SearchBar = ({ query, setQuery, loading, searchMetrics }) => (
   </div>
 );
 
+const SettingsView = ({ addLog }) => {
+  const [loading, setLoading] = useState(true);
+  const [settings, setSettings] = useState({ borrowPeriod: 14, finePerDay: 10 });
+
+  useEffect(() => {
+    fetch('/api/settings')
+      .then(res => res.json())
+      .then(data => {
+        setSettings({ borrowPeriod: data.borrowPeriod, finePerDay: data.finePerDay });
+        setLoading(false);
+      });
+  }, []);
+
+  const handleSave = async () => {
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings)
+      });
+      if (res.ok) {
+        addLog('ADMIN', 'Updated system settings', 'success');
+        alert('Settings saved!');
+      } else {
+        alert('Failed to save settings');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Error saving settings');
+    }
+  };
+
+  if (loading) return <div className="text-slate-400">Loading settings...</div>;
+
+  return (
+    <Card className="max-w-xl mx-auto p-6 space-y-6">
+      <h2 className="text-xl font-bold flex items-center gap-2 text-slate-800 dark:text-white">
+        <Settings className="w-6 h-6" /> System Configuration
+      </h2>
+
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+            Borrow Period (Days)
+          </label>
+          <div className="relative">
+            <Calendar className="absolute left-3 top-2.5 w-5 h-5 text-slate-400" />
+            <input
+              type="number"
+              value={settings.borrowPeriod}
+              onChange={(e) => setSettings({ ...settings, borrowPeriod: parseInt(e.target.value) })}
+              className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg"
+            />
+          </div>
+          <p className="text-xs text-slate-500 mt-1">Default number of days a student can borrow a book.</p>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+            Fine Per Day (₹)
+          </label>
+          <div className="relative">
+            <DollarSign className="absolute left-3 top-2.5 w-5 h-5 text-slate-400" />
+            <input
+              type="number"
+              value={settings.finePerDay}
+              onChange={(e) => setSettings({ ...settings, finePerDay: parseInt(e.target.value) })}
+              className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg"
+            />
+          </div>
+          <p className="text-xs text-slate-500 mt-1">Penalty amount charged per day for overdue books.</p>
+        </div>
+
+        <Button onClick={handleSave} className="w-full" icon={RefreshCw}>
+          Save Changes
+        </Button>
+      </div>
+    </Card>
+  );
+};
+
+const ActiveLoansView = () => {
+  const [loans, setLoans] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/admin/loans')
+      .then(res => res.json())
+      .then(data => {
+        setLoans(data);
+        setLoading(false);
+      })
+      .catch(err => console.error(err));
+  }, []);
+
+  if (loading) return <div className="text-slate-400">Loading loans...</div>;
+
+  return (
+    <Card className="p-0 overflow-hidden">
+      <div className="p-4 border-b border-slate-100 dark:border-slate-700">
+        <h2 className="text-lg font-semibold text-slate-800 dark:text-white flex items-center gap-2">
+          <Book className="w-5 h-5" /> Active Loans Monitoring
+        </h2>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm text-left">
+          <thead className="text-xs text-slate-500 uppercase bg-slate-50 dark:bg-slate-800/50">
+            <tr>
+              <th className="px-6 py-3">User</th>
+              <th className="px-6 py-3">Book Title</th>
+              <th className="px-6 py-3">Borrowed</th>
+              <th className="px-6 py-3">Due Date</th>
+              <th className="px-6 py-3">Status</th>
+              <th className="px-6 py-3">Fine</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loans.length === 0 ? (
+              <tr>
+                <td colSpan="6" className="px-6 py-8 text-center text-slate-500">No active loans found.</td>
+              </tr>
+            ) : loans.map(loan => (
+              <tr key={loan._id} className="bg-white dark:bg-slate-800 border-b border-slate-100 dark:border-slate-700">
+                <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">
+                  {loan.userId}
+                </td>
+                <td className="px-6 py-4">{loan.book?.title || 'Unknown'}</td>
+                <td className="px-6 py-4">{new Date(loan.borrowDate).toLocaleDateString()}</td>
+                <td className="px-6 py-4">{new Date(loan.dueDate).toLocaleDateString()}</td>
+                <td className="px-6 py-4">
+                  {loan.overdueDays > 0 ? (
+                    <Badge variant="danger">Overdue ({loan.overdueDays} days)</Badge>
+                  ) : (
+                    <Badge variant="success">On Time</Badge>
+                  )}
+                </td>
+                <td className="px-6 py-4 font-mono font-medium">
+                  {loan.fine > 0 ? <span className="text-red-500">₹{loan.fine}</span> : '-'}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Card>
+  );
+};
+
 const DashboardView = ({
   session, books, loading, searchMetrics, query, setQuery, borrowedBooks, logs,
-  fetchBooks, handleBorrow, handleReturn, handleDelete, setIsAddModalOpen
+  fetchBooks, handleBorrow, handleReturn, handleDelete, setIsAddModalOpen,
+  userTransactions
 }) => (
   <div className="space-y-6">
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -110,6 +260,45 @@ const DashboardView = ({
         color="bg-purple-500"
       />
     </div>
+
+    {/* Student: Active Loans Overview */}
+    {session?.user?.role !== 'admin' && userTransactions && userTransactions.length > 0 && (
+      <Card className="p-4 bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-800">
+        <h3 className="text-sm font-semibold text-blue-800 dark:text-blue-300 mb-3 flex items-center gap-2">
+          <Clock className="w-4 h-4" /> My Active Loans
+        </h3>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {userTransactions.map(tx => {
+            const isOverdue = new Date() > new Date(tx.dueDate);
+            const book = books.find(b => b._id === tx.bookId) || { title: 'Loading...' }; // Ideally fetch book details
+            return (
+              <div key={tx._id} className="bg-white dark:bg-slate-800 p-3 rounded-lg shadow-sm border border-slate-100 dark:border-slate-700">
+                <div className="flex justify-between items-start mb-1">
+                  {/* We might not have book title here if not in current search view, 
+                       but for now assumes books are loaded or we use ID. 
+                       In a real app, userTransactions should populate book details. 
+                       For this quick implementation, we rely on search view or separate fetch.
+                   */}
+                  <span className="font-medium text-slate-800 dark:text-slate-200 text-sm truncate w-32">
+                    {/* Improving this: match ID with loaded books */}
+                    {books.find(b => b._id === tx.bookId)?.title || "Book ID: " + tx.bookId.substring(0, 8) + "..."}
+                  </span>
+                  {isOverdue ? (
+                    <span className="text-xs font-bold text-red-500 bg-red-50 dark:bg-red-900/30 px-1.5 py-0.5 rounded">Overdue</span>
+                  ) : (
+                    <span className="text-xs text-green-600 bg-green-50 dark:bg-green-900/30 px-1.5 py-0.5 rounded">Active</span>
+                  )}
+                </div>
+                <div className="flex justify-between text-xs text-slate-500">
+                  <span>Due: {new Date(tx.dueDate).toLocaleDateString()}</span>
+                  {tx.fine > 0 && <span className="font-bold text-red-500">Fine: ₹{tx.fine}</span>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </Card>
+    )}
 
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div className="lg:col-span-2 space-y-6">
@@ -227,7 +416,8 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [searchMetrics, setSearchMetrics] = useState(null);
   const [logs, setLogs] = useState([]); // Local logs state
-  const [borrowedBooks, setBorrowedBooks] = useState([]);
+  const [borrowedBooks, setBorrowedBooks] = useState([]); // IDs only
+  const [userTransactions, setUserTransactions] = useState([]); // Full objects
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   // Toggle Dark Mode
@@ -269,6 +459,7 @@ export default function App() {
       if (res.ok) {
         const data = await res.json();
         setBorrowedBooks(data.borrowedBookIds || []);
+        setUserTransactions(data.activeLoans || []);
       }
     } catch (error) {
       console.error("Failed to fetch borrowed books", error);
@@ -413,7 +604,7 @@ export default function App() {
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white capitalize">
-              {activeTab === 'dashboard' ? 'Overview' : activeTab}
+              {activeTab === 'dashboard' ? 'Overview' : activeTab.replace('-', ' ')}
             </h1>
             <p className="text-slate-500 dark:text-slate-400">Welcome back, {session.user.name}</p>
           </div>
@@ -442,27 +633,14 @@ export default function App() {
             handleReturn={handleReturn}
             handleDelete={handleDelete}
             setIsAddModalOpen={setIsAddModalOpen}
-          />
-        )}
-        {activeTab === 'books' && (
-          <DashboardView
-            session={session}
-            books={books}
-            loading={loading}
-            searchMetrics={searchMetrics}
-            query={query}
-            setQuery={setQuery}
-            borrowedBooks={borrowedBooks}
-            logs={logs}
-            fetchBooks={fetchBooks}
-            handleBorrow={handleBorrow}
-            handleReturn={handleReturn}
-            handleDelete={handleDelete}
-            setIsAddModalOpen={setIsAddModalOpen}
+            userTransactions={userTransactions}
           />
         )}
 
-        {(activeTab !== 'dashboard' && activeTab !== 'books') && (
+        {activeTab === 'settings' && <SettingsView addLog={addLog} />}
+        {activeTab === 'loans' && <ActiveLoansView />}
+
+        {(activeTab !== 'dashboard' && activeTab !== 'books' && activeTab !== 'settings' && activeTab !== 'loans') && (
           <div className="flex flex-col items-center justify-center h-[60vh] text-slate-400">
             <Settings className="w-16 h-16 mb-4 opacity-20" />
             <h2 className="text-xl font-semibold text-slate-600 dark:text-slate-300">Section Under Construction</h2>

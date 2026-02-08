@@ -1,6 +1,7 @@
 import dbConnect from '../../../lib/mongodb';
 import Book from '../../../models/Book';
 import Transaction from '../../../models/Transaction';
+import SystemSettings from '../../../models/SystemSettings';
 import redis from '../../../lib/redis';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "../auth/[...nextauth]";
@@ -54,10 +55,16 @@ export default async function handler(req, res) {
     }
   }
 
-  // 4. CREATE TRANSACTION RECORD
-  await Transaction.create({
-    userId,
-    bookId
+  // 3. GET SETTINGS & CALCULATE DUE DATE
+  const settings = await SystemSettings.getSettings();
+  const dueDate = new Date();
+  dueDate.setDate(dueDate.getDate() + settings.borrowPeriod);
+
+  // 4. CREATE TRANSACTION
+  const transaction = await Transaction.create({
+    userId: session.user.email,
+    bookId,
+    dueDate // Add due date
   });
 
   // 5. CACHE INVALIDATION: Clear stale data
