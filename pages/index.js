@@ -7,6 +7,8 @@ import {
 import { Card, Button, Badge } from '../components/LibraryUI';
 import Sidebar from '../components/Sidebar';
 import { MetricsCard, SystemLogs } from '../components/DashboardWidgets';
+import AddBookModal from '../components/AddBookModal';
+import { Plus } from 'lucide-react';
 
 export default function App() {
   const { data: session, status } = useSession();
@@ -19,6 +21,8 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [searchMetrics, setSearchMetrics] = useState(null);
   const [logs, setLogs] = useState([]); // Local logs state
+  const [borrowedBooks, setBorrowedBooks] = useState([]);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   // Toggle Dark Mode
   useEffect(() => {
@@ -40,12 +44,25 @@ export default function App() {
   // Initial Load & Debounced Search
   useEffect(() => {
     if (session) {
+      fetchBorrowedBooks();
       const delaySearch = setTimeout(() => {
         fetchBooks(query);
       }, 500);
       return () => clearTimeout(delaySearch);
     }
   }, [query, session]);
+
+  async function fetchBorrowedBooks() {
+    try {
+      const res = await fetch('/api/user/transactions');
+      if (res.ok) {
+        const data = await res.json();
+        setBorrowedBooks(data.borrowedBookIds || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch borrowed books", error);
+    }
+  }
 
   async function fetchBooks(searchQuery) {
     setLoading(true);
@@ -89,12 +106,14 @@ export default function App() {
         body: JSON.stringify({ bookId }),
       });
 
+
       const result = await res.json();
 
       if (res.ok) {
         addLog('SUCCESS', `Borrowed "${bookTitle}"`, 'success');
-        alert("Book borrowed successfully!");
-        fetchBooks(query); // Refresh list
+        // alert("Book borrowed successfully!"); // Removing alert for smoother UI
+        fetchBooks(query);
+        fetchBorrowedBooks();
       } else {
         addLog('FAILED', `Could not borrow "${bookTitle}": ${result.message}`, 'danger');
         alert(`Failed to borrow: ${result.message || 'Unknown error'}`);
@@ -105,6 +124,37 @@ export default function App() {
       alert("Network error. Please try again later.");
     }
   }
+
+  async function handleReturn(bookId, bookTitle) {
+    addLog('QUEUE', `Return request for "${bookTitle}"...`, 'info');
+    try {
+      const res = await fetch('/api/books/return', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookId }),
+      });
+
+      const result = await res.json();
+
+      if (res.ok) {
+        addLog('SUCCESS', `Returned "${bookTitle}"`, 'success');
+        // alert("Book returned successfully!");
+        fetchBooks(query);
+        fetchBorrowedBooks();
+      } else {
+        addLog('FAILED', `Could not return "${bookTitle}": ${result.message}`, 'danger');
+        alert(`Failed to return: ${result.message}`);
+      }
+    } catch (error) {
+      console.error("Return failed:", error);
+      addLog('ERROR', 'Network error during return', 'danger');
+    }
+  }
+
+  const handleBookAdded = (newBook) => {
+    addLog('ADMIN', `Added new book: "${newBook.title}"`, 'success');
+    fetchBooks(query);
+  };
 
   // --- SUB-COMPONENTS ---
 
@@ -158,8 +208,8 @@ export default function App() {
       {searchMetrics && !loading && (
         <div className={`mt-2 flex items-center gap-2 text-xs px-2 animate-in fade-in slide-in-from-top-2 duration-300`}>
           <div className={`flex items-center gap-1.5 px-2 py-1 rounded-md border ${searchMetrics.isCached
-              ? 'bg-green-50 border-green-200 text-green-700 dark:bg-green-900/30 dark:border-green-800 dark:text-green-400'
-              : 'bg-orange-50 border-orange-200 text-orange-700 dark:bg-orange-900/30 dark:border-orange-800 dark:text-orange-400'
+            ? 'bg-green-50 border-green-200 text-green-700 dark:bg-green-900/30 dark:border-green-800 dark:text-green-400'
+            : 'bg-orange-50 border-orange-200 text-orange-700 dark:bg-orange-900/30 dark:border-orange-800 dark:text-orange-400'
             }`}>
             {searchMetrics.isCached ? <Zap className="w-3 h-3" /> : <Database className="w-3 h-3" />}
             <span className="font-semibold">{searchMetrics.source}</span>
@@ -196,10 +246,10 @@ export default function App() {
           color="bg-green-500"
         />
         <MetricsCard
-          title="Role"
-          value={session?.user?.role === 'admin' ? 'Admin' : 'Student'}
-          subtext="Access Level"
-          icon={Shield}
+          title={session?.user?.role === 'admin' ? 'Role' : 'Borrowed Books'}
+          value={session?.user?.role === 'admin' ? 'Admin' : (borrowedBooks.length || '0')}
+          subtext={session?.user?.role === 'admin' ? 'Access Level' : 'Active Loans'}
+          icon={session?.user?.role === 'admin' ? Shield : Book}
           color="bg-purple-500"
         />
       </div>
@@ -211,7 +261,17 @@ export default function App() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-slate-800 dark:text-white">Library Catalog</h3>
-              <Button variant="ghost" className="text-xs" onClick={() => fetchBooks('')}>Refresh</Button>
+              <div className="flex gap-2">
+                <Button variant="ghost" className="text-xs" onClick={() => fetchBooks('')}>Refresh</Button>
+                {session?.user?.role === 'admin' && (
+                  <Button
+                    onClick={() => setIsAddModalOpen(true)}
+                    className="text-xs flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    <Plus className="w-3 h-3" /> Add Book
+                  </Button>
+                )}
+              </div>
             </div>
 
             {books.map((book) => (
@@ -231,16 +291,26 @@ export default function App() {
                   </div>
                   <div className="flex items-center justify-between mt-3">
                     <span className="text-xs text-slate-400 font-mono hidden sm:block">ISBN: {book.isbn}</span>
-                    {book.status === 'available' ? (
+
+                    {borrowedBooks.includes(book._id) ? (
                       <Button
-                        onClick={() => handleBorrow(book._id, book.title)}
-                        variant="primary"
-                        className="px-3 py-1 h-8 text-xs"
+                        onClick={() => handleReturn(book._id, book.title)}
+                        className="px-3 py-1 h-8 text-xs bg-amber-500 hover:bg-amber-600 text-white border-none"
                       >
-                        Borrow
+                        Return Book
                       </Button>
                     ) : (
-                      <span className="text-xs text-slate-400 italic">Unavailable</span>
+                      book.status === 'available' ? (
+                        <Button
+                          onClick={() => handleBorrow(book._id, book.title)}
+                          variant="primary"
+                          className="px-3 py-1 h-8 text-xs"
+                        >
+                          Borrow
+                        </Button>
+                      ) : (
+                        <span className="text-xs text-slate-400 italic">Unavailable</span>
+                      )
                     )}
                   </div>
                 </div>
@@ -323,6 +393,12 @@ export default function App() {
           </div>
         )}
       </main>
+
+      <AddBookModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onBookAdded={handleBookAdded}
+      />
     </div>
   );
 }
