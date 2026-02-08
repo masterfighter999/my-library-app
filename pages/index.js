@@ -127,7 +127,7 @@ const SettingsView = ({ addLog }) => {
               type="number"
               value={settings.borrowPeriod}
               onChange={(e) => setSettings({ ...settings, borrowPeriod: parseInt(e.target.value) })}
-              className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg"
+              className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
             />
           </div>
           <p className="text-xs text-slate-500 mt-1">Default number of days a student can borrow a book.</p>
@@ -143,7 +143,7 @@ const SettingsView = ({ addLog }) => {
               type="number"
               value={settings.finePerDay}
               onChange={(e) => setSettings({ ...settings, finePerDay: parseInt(e.target.value) })}
-              className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg"
+              className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
             />
           </div>
           <p className="text-xs text-slate-500 mt-1">Penalty amount charged per day for overdue books.</p>
@@ -182,7 +182,7 @@ const ActiveLoansView = () => {
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm text-left">
-          <thead className="text-xs text-slate-500 uppercase bg-slate-50 dark:bg-slate-800/50">
+          <thead className="text-xs text-slate-500 dark:text-slate-400 uppercase bg-slate-50 dark:bg-slate-800/50">
             <tr>
               <th className="px-6 py-3">User</th>
               <th className="px-6 py-3">Book Title</th>
@@ -202,9 +202,9 @@ const ActiveLoansView = () => {
                 <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">
                   {loan.userId}
                 </td>
-                <td className="px-6 py-4">{loan.book?.title || 'Unknown'}</td>
-                <td className="px-6 py-4">{new Date(loan.borrowDate).toLocaleDateString()}</td>
-                <td className="px-6 py-4">{new Date(loan.dueDate).toLocaleDateString()}</td>
+                <td className="px-6 py-4 text-slate-500 dark:text-slate-400">{loan.book?.title || 'Unknown'}</td>
+                <td className="px-6 py-4 text-slate-500 dark:text-slate-400">{new Date(loan.borrowDate).toLocaleDateString()}</td>
+                <td className="px-6 py-4 text-slate-500 dark:text-slate-400">{new Date(loan.dueDate).toLocaleDateString()}</td>
                 <td className="px-6 py-4">
                   {loan.overdueDays > 0 ? (
                     <Badge variant="danger">Overdue ({loan.overdueDays} days)</Badge>
