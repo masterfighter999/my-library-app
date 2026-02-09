@@ -70,6 +70,16 @@ A modern, full-stack Library Management System built with Next.js, featuring rea
 - `/pages`: Next.js pages and API routes.
 - `/styles`: Global CSS and styling configurations.
 
+## 🚀 Deployment (Vercel)
+
+1. **Connect Repository**: Import your repository to [Vercel](https://vercel.com/).
+2. **Configure Environment Variables**: Add all variables from your `.env.local` to the Project Settings > Environment Variables in Vercel.
+3. **Update MongoDB Atlas**: Ensure "Network Access" allows Vercel IPs (use `0.0.0.0/0` for initial setup).
+4. **Update Google Cloud Console**:
+   - Add your Vercel deployment URL (e.g., `https://your-app.vercel.app`) to **Authorized JavaScript origins**.
+   - Add `https://your-app.vercel.app/api/auth/callback/google` to **Authorized redirect URIs**.
+5. **Update NEXTAUTH_URL**: Ensure the `NEXTAUTH_URL` environment variable in Vercel matches your production URL.
+
 ## 📝 License
 
 This project is licensed under the MIT License.
