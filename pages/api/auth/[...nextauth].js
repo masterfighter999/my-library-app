@@ -1,6 +1,14 @@
 import NextAuth from 'next-auth';
 import GoogleProvider from 'next-auth/providers/google';
 
+console.log("--- DEBUG: ENVIRONMENT VARIABLES ---");
+console.log("NODE_ENV:", process.env.NODE_ENV);
+console.log("NEXTAUTH_SECRET is set:", !!process.env.NEXTAUTH_SECRET);
+if (process.env.NEXTAUTH_SECRET) console.log("NEXTAUTH_SECRET length:", process.env.NEXTAUTH_SECRET.length);
+console.log("GOOGLE_CLIENT_ID is set:", !!process.env.GOOGLE_CLIENT_ID);
+console.log("GOOGLE_CLIENT_SECRET is set:", !!process.env.GOOGLE_CLIENT_SECRET);
+console.log("------------------------------------");
+
 export const authOptions = {
   providers: [
     GoogleProvider({
